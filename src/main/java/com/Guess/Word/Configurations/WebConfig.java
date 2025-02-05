@@ -30,7 +30,7 @@ public class WebConfig implements WebMvcConfigurer {
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
                 .allowedOrigins("http://localhost:8080")
-                .allowedOrigins("https://guesswordgame.onrender.com/")
+                .allowedOrigins("https://bestmovies-as89.onrender.com")
                 .allowedOrigins("https://peculiaridadesdelmundo.blogspot.com")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS")
                 .allowedHeaders("*")

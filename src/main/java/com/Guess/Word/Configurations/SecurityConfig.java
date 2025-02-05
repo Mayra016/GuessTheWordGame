@@ -56,10 +56,30 @@ public class SecurityConfig extends WebSecurityConfiguration {
 	@Value("${PASSWORD}")
 	String password;
 	
+	@Bean
+	public static SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+	    http
+	        .requiresChannel(channel -> channel.anyRequest().requiresSecure())
+	        .authorizeRequests(authorize -> authorize.anyRequest().permitAll())
+	        .portMapper().http(80).mapsTo(443)  // Mapea el puerto 80 a 443 para la redirección
+	        .and()
+	        .addFilterBefore(new RedirectToHttpsFilter(), ChannelProcessingFilter.class);
+	        
+	      return http.build();
+	}
 	
-	
-
- 
+    private static class RedirectToHttpsFilter extends OncePerRequestFilter {
+        @Override
+        protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+                throws ServletException, IOException {
+            if (!request.isSecure()) {
+                String redirectUrl = "https://" + request.getServerName() + request.getRequestURI();
+                response.sendRedirect(redirectUrl);
+            } else {
+                filterChain.doFilter(request, response);
+            }
+        }
+    }
     @SuppressWarnings({ "removal", "deprecation" })
 	@Bean
     public SecurityFilterChain configure(HttpSecurity http) throws Exception {
@@ -150,6 +170,34 @@ public class SecurityConfig extends WebSecurityConfiguration {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+    
+    
+    
+    @Bean
+    public ServletWebServerFactory servletContainer() {
+        TomcatServletWebServerFactory tomcat = new TomcatServletWebServerFactory() {
+            @Override
+            protected void postProcessContext(Context context) {
+                SecurityConstraint securityConstraint = new SecurityConstraint();
+                securityConstraint.setUserConstraint("CONFIDENTIAL");
+                SecurityCollection collection = new SecurityCollection();
+                collection.addPattern("/*");
+                securityConstraint.addCollection(collection);
+                context.addConstraint(securityConstraint);
+            }
+        };
+        tomcat.addAdditionalTomcatConnectors(redirectConnector());
+        return tomcat;
+    }
+
+    private Connector redirectConnector() {
+        Connector connector = new Connector(TomcatServletWebServerFactory.DEFAULT_PROTOCOL);
+        connector.setScheme("http");
+        connector.setPort(8080); // HTTP PORT
+        connector.setSecure(false);
+        connector.setRedirectPort(8443); // HTTPS PORT
+        return connector;
     }
     
 
